@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN" style="--stage-bg: #00FF2A;" data-immersive-translate-page-theme="dark"><head>
+<script>window.PRESET_DATA = {"version":"v1","brightness":1,"speed":1,"bgColor":"#00FF2A","defaultGreen":true,"arraySize":8,"calibrationScale":1.5,"designRatio":3,"versions":["v1","v2","v3","v4","v5"],"parallax":{"x":15.087433239849107,"y":6.510793263026387,"targetX":15.014999999999999,"targetY":6.4799999999999995,"friction":0.08}};</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TechSun Visual - Standalone Pro</title>
+    <link rel="stylesheet" href="style.css">
+<style>@keyframes spin{0%{transform:rotate(0)}to{transform:rotate(360deg)}}.youmind-translate-loader{animation:spin 1s linear infinite}.youmind-translate-target{color:#06c;background-color:#f0f8ff;padding:8px;border-radius:4px;margin:.5em 0;font-style:normal;line-height:1.6}.youmind-translate-target.hidden{display:none}.youmind-translate-target-translation-block-wrapper{display:inline-block;margin-top:var(--youmind-translate-spacing, .5em)!important;margin-bottom:var(--youmind-translate-spacing, .5em)!important}.youmind-translate-target-translation-inline-wrapper{display:inline;margin-left:.2em}.youmind-original-content-wrapper{display:none}.youmind-translate-loading{display:inline-block;opacity:.7;margin-top:var(--youmind-translate-spacing, .5em)!important;margin-bottom:var(--youmind-translate-spacing, .5em)!important;font-size:12px!important;line-height:12px!important}.youmind-translate-loading svg{width:12px!important;height:12px!important;max-width:12px!important;max-height:12px!important}.youmind-translate-loading.inline{margin-left:.3em;margin-top:0;margin-bottom:0;height:12px!important;font-size:12px!important;line-height:12px!important}[data-youmind-translate-target-mode=below] .youmind-translate-loading{height:12px}[data-youmind-translate-target-mode=replace] .youmind-translate-loading{height:12px!important;margin-left:.3em;margin-top:0;margin-bottom:0}.youmind-translate-hidden{display:none!important}.youmind-translate-target-translation-theme-none-inner{display:inline}[data-youmind-translate-target-mode=below] .youmind-translate-target-translation-theme-none-inner{text-decoration:underline;text-decoration-style:dashed;text-decoration-color:#a9d5ff;text-underline-offset:4px}[data-youmind-translate-target-mode=replace] .youmind-translate-target-translation-block-wrapper{margin-top:0;margin-bottom:0}[data-youmind-translate-target-mode=replace] .youmind-translate-target-translation-inline-wrapper{margin-left:0}.youmind-translate-learning-mode{position:relative}[data-youmind-translate-target-mode=below] .youmind-translate-learning-mode .youmind-translate-target-translation-theme-none-inner{filter:blur(5px);opacity:.3;transition:all .15s ease-in-out}[data-youmind-translate-target-mode=below] .youmind-translate-learning-mode .youmind-translate-target-translation-theme-none-inner:hover{opacity:1;filter:blur(0px)}.youmind-bionic-wrapper{display:inline;font-family:inherit;font-size:inherit;line-height:inherit;color:inherit}.youmind-bionic-bold{font-weight:700;color:inherit}.youmind-bionic-normal{font-weight:400;opacity:.7;color:inherit}[data-youmind-translate-target-mode=bionic] .youmind-bionic-bold{letter-spacing:-.01em}[data-youmind-translate-target-mode=bionic]{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}.youmind-translate-preserve-style{font-family:inherit;font-size:inherit;color:inherit;line-height:inherit;text-align:inherit}</style></head>
+<body class="dark is-client">
+    <!-- 固定 Logo -->
+    <div class="logo-container">
+        <img src="logo.png" class="brand-logo" alt="LOGO">
+    </div>
+
+    <!-- 视差舞台区 -->
+    <main class="viewport">
+        <div id="stage" class="stage" style="background-color: rgb(0, 255, 42); width: 355px; height: 237px;">
+            <!-- 云膜图层组 (位于最底层) -->
+            <div id="layer-clouds" class="layer layer-clouds"><img class="cloud-item" src="./cloud-12.png" data-ratio="2.9943661971830986" style="transform: translate(-50%, -50%) translate(6.03497px, 2.60432px) scale(1);"></div>
+
+            <!-- 底图层 -->
+            <div id="layer-under" class="layer layer-under" style="background-image: none; opacity: 0;"></div>
+            
+            <!-- WebGL 光影层 (在 under 和 cloud 之间) -->
+            <canvas id="glCanvas" class="layer layer-gl" width="355" height="237"></canvas>
+            
+            <!-- 蒙版顶层 -->
+            <div id="layer-top" class="layer layer-top">
+                <img id="topImg" src="./v1/top.png" alt="" draggable="false">
+            </div>
+        </div>
+    </main>
+
+    <!-- 控制面板 -->
+    <aside class="control-panel">
+        <div id="panel-toggle" title="展开/收起面板"></div>
+        <div class="panel-header">
+            <h3>控制面板</h3>
+            <span class="v-tag">V4.5</span>
+        </div>
+
+        <div class="panel-section">
+            <label>当前版本</label>
+            <div id="version-list" class="version-list">
+                <!-- 动态生成版本按钮 -->
+            <button class="v-btn">V1</button><button class="v-btn">V2</button><button class="v-btn">V3</button><button class="v-btn">V4</button><button class="v-btn">V5</button></div>
+        </div>
+
+        <div class="panel-section">
+            <div class="label-row">
+                <label>动画速度</label>
+                <span id="speed-val">1.0x</span>
+            </div>
+            <input type="range" id="speed-slider" min="0.1" max="3.0" step="0.1" value="1.0">
+        </div>
+
+        <div class="panel-section">
+            <div class="label-row">
+                <label>光效透明度</label>
+                <span id="bright-val">1.0x</span>
+            </div>
+            <input type="range" id="bright-slider" min="0.0" max="3.0" step="0.1" value="1.0">
+        </div>
+
+        <div class="panel-section">
+            <div class="label-row">
+                <label>阵列尺寸 (Array Size)</label>
+                <span id="depth-val">8mm</span>
+            </div>
+            <input type="range" id="depth-slider" min="6" max="12" step="1" value="8">
+        </div>
+
+        <div class="panel-section">
+            <div class="label-row">
+                <label>场景底色</label>
+                <div class="lock-wrapper">
+                    <input type="checkbox" id="bg-default-green" checked=""> 
+                    <span>默认绿幕</span>
+                </div>
+            </div>
+            <div class="color-picker-row">
+                <div class="color-preview-wrapper">
+                    <input type="color" id="bg-color-picker" value="#0c0c0c">
+                    <div id="bg-color-indicator" style="background-color: rgb(0, 255, 42);"></div>
+                </div>
+                <input type="text" id="bg-color-hex" class="hex-input-box" value="#0c0c0c" spellcheck="false">
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <label>智能键控基准 (TechSun Auto-Keying)</label>
+            <div class="smart-tip">
+                <div class="tip-icon">✨</div>
+                <p>蓝/绿/黑背景已自动扣除</p>
+            </div>
+        </div>
+
+        <div class="panel-footer">
+            <button id="export-btn" class="primary-btn">导出客户端版</button>
+        </div>
+    </aside>
+
+    <!-- 底部演示控制台 (Demo HUD - 极致精简版) -->
+    <div class="demo-hud">
+        <div style="position: absolute; top: 0px; left: 50%; transform: translate(-50%, -100%); font-size: 9px; color: rgba(255,255,255,0.2); white-space: nowrap; letter-spacing: 0.5em; padding-bottom: 8px;">
+            TECHSUN VISUAL ENGINE V5.0 (CORE STANDALONE)
+        </div>
+        
+        <div class="hud-content">
+            <!-- 深度 -->
+            <div class="hud-group">
+                <label>阵列深度</label>
+                <input type="range" id="hud-depth-slider" min="6" max="12" step="1" value="8">
+                <span class="hud-val" id="hud-depth-val">8mm</span>
+            </div>
+            
+            <div class="hud-divider"></div>
+
+            <!-- 亮度 -->
+            <div class="hud-group">
+                <label>光效亮度</label>
+                <input type="range" id="hud-bright-slider" min="0" max="2" step="0.1" value="1">
+                <span class="hud-val" id="hud-bright-val">1.0x</span>
+            </div>
+
+            <div class="hud-divider"></div>
+
+            <!-- 速率 -->
+            <div class="hud-group">
+                <label>动画速率</label>
+                <input type="range" id="hud-speed-slider" min="0" max="2" step="0.1" value="1">
+                <span class="hud-val" id="hud-speed-val">1.0x</span>
+            </div>
+
+            <div class="hud-divider"></div>
+
+            <!-- 版本切换 -->
+            <div class="hud-versions" id="hud-version-list"><button class="hud-btn active">V1</button><button class="hud-btn">V2</button><button class="hud-btn">V3</button><button class="hud-btn">V4</button><button class="hud-btn">V5</button></div>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+
+
+</body><div id="youmind-content-root"></div><div id="immersive-translate-popup" style="all: initial"></div></html>

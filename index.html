@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <!-- V5.5.4 - FLAT HUD EDITION -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TechSun Visual - Standalone Pro</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark">
+    <!-- 固定 Logo -->
+    <div class="logo-container">
+        <img src="logo.png" class="brand-logo" alt="LOGO">
+    </div>
+
+    <!-- 视察舞台区 -->
+    <main class="viewport">
+        <div id="stage" class="stage">
+            <div id="layer-clouds" class="layer layer-clouds">
+                <img id="cloudImg" class="cloud-item" src="./cloud-12.png" alt="">
+            </div>
+            <div id="layer-under" class="layer layer-under"></div>
+            <canvas id="glCanvas" class="layer layer-gl"></canvas>
+            <div id="layer-top" class="layer layer-top">
+                <img id="topImg" src="" alt="" draggable="false">
+                <div class="lighting-overlay"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 侧边控制面板 (调试模式) -->
+    <aside id="main-sidebar" class="control-panel">
+        <div class="panel-header">
+            <div class="header-main">
+                <h3>控制面板</h3>
+                <span class="v-tag">V5.5</span>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <label>当前版本</label>
+            <div id="version-list" class="version-list"></div>
+        </div>
+
+        <div class="panel-section">
+            <div class="slider-row">
+                <label>阵列尺寸 (ARRAY SIZE)</label>
+                <span id="depth-val">8mm</span>
+            </div>
+            <input type="range" id="depth-slider" min="6" max="12" step="1" value="8">
+        </div>
+
+        <div class="panel-section">
+            <div class="slider-row">
+                <label>光效透明度</label>
+                <span id="bright-val">1.0x</span>
+            </div>
+            <input type="range" id="bright-slider" min="0" max="2" step="0.1" value="1.0">
+        </div>
+
+        <div class="panel-section">
+            <div class="slider-row">
+                <label>动画速率</label>
+                <span id="speed-val">1.0x</span>
+            </div>
+            <input type="range" id="speed-slider" min="0.1" max="2.0" step="0.1" value="1.0">
+        </div>
+
+        <div class="panel-section">
+            <div class="label-row">
+                <label>场景底色</label>
+                <div class="lock-wrapper">
+                    <input type="checkbox" id="bg-default-green"> 
+                    <span>默认绿幕</span>
+                </div>
+            </div>
+            <div class="color-picker-row">
+                <div class="color-preview-wrapper">
+                    <input type="color" id="bg-color-picker" value="#000000">
+                    <div id="bg-color-indicator"></div>
+                </div>
+                <input type="text" id="bg-color-hex" class="hex-input-box" value="#000000" spellcheck="false">
+            </div>
+        </div>
+
+        <div class="panel-footer">
+            <button id="btn-preview" class="primary-btn">进入预览模式</button>
+            <button id="btn-export" class="primary-btn">导出客户端版</button>
+        </div>
+    </aside>
+
+    <!-- 预览模式专用 HUD (中下居中) -->
+    <div id="preview-hud" class="demo-hud" style="display: none;">
+        <div class="hud-kernel-tag">TECHSUN VISUAL ENGINE V5.5</div>
+        
+        <!-- 第一层：功能调节 -->
+        <div class="hud-container">
+            <div class="hud-card mini">
+                <div class="hud-group">
+                    <div class="hud-label-row">
+                        <label>阵列尺寸</label>
+                        <span class="hud-val" id="hud-depth-val">8mm</span>
+                    </div>
+                    <input type="range" id="hud-depth-slider" min="6" max="12" step="1" value="8">
+                </div>
+            </div>
+            <div class="hud-card mini">
+                <div class="hud-group">
+                    <div class="hud-label-row">
+                        <label>光效透明</label>
+                        <span class="hud-val" id="hud-bright-val">1.0x</span>
+                    </div>
+                    <input type="range" id="hud-bright-slider" min="0" max="2" step="0.1" value="1.0">
+                </div>
+            </div>
+            <div class="hud-card mini">
+                <div class="hud-group">
+                    <div class="hud-label-row">
+                        <label>动画速率</label>
+                        <span class="hud-val" id="hud-speed-val">1.0x</span>
+                    </div>
+                    <input type="range" id="hud-speed-slider" min="0.1" max="2.0" step="0.1" value="1.0">
+                </div>
+            </div>
+        </div>
+
+        <!-- 第二层：版本切换 (解开套娃，直接悬浮) -->
+        <div id="hud-version-list" class="hud-segmented capsule-list"></div>
+    </div>
+
+    <!-- 右上角悬浮退出 -->
+    <div id="emergency-exit" class="emergency-btn" title="返回调试模式" style="display: none;">
+        <span>返回调试</span>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>
