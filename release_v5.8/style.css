@@ -103,28 +103,12 @@ body::after {
 
 .layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .layer-clouds {
-    z-index: 1; /* 倒数第二层（Stage背景之上，Under之下） */
+    z-index: 1;
     opacity: 1.0;
     pointer-events: none;
     will-change: transform, filter;
-    transform: translate3d(0,0,1px); 
+    transform: translate3d(0,0,1px); /* 3D 硬件加速 */
     contain: paint;
-}
-.hud-mode-tag {
-    font-family: 'Roboto Mono', monospace;
-    font-size: 10px;
-    padding: 2px 6px;
-    background: rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 3px;
-    margin-left: 10px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    pointer-events: none;
-}
-.is-preview .hud-mode-tag {
-    opacity: 0.8;
 }
 .layer-under {
     z-index: 2;
@@ -388,7 +372,7 @@ body.is-preview #emergency-exit { display: flex !important; }
     flex-wrap: nowrap;
     justify-content: center;
     gap: 12px;
-    width: 80%; /* 缩减至 80% */
+    width: 100%;
 }
 
 .hud-card.mini {

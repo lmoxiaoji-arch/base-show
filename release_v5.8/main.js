@@ -3,8 +3,7 @@
  */
 
 const CONFIG = {
-    tiltStrengthStandard: 8.0, // 有云膜时的标准力度
-    tiltStrengthFree: 18.0,    // 无云膜时的自由力度
+    tiltStrength: 8.00,
     parallaxStrength: 0.25,
     zoomMin: 0.8,
     zoomMax: 1.2,
@@ -13,7 +12,6 @@ const CONFIG = {
 
 const STATE = {
     version: 'v1',
-    hasCloud: true, // 动态标记
     brightness: 1.0,
     speed: 0.8,
     bgColor: '#000000',
@@ -23,7 +21,7 @@ const STATE = {
     designRatio: 3.0,
     zoom: 1.0,
     targetZoom: 1.0,
-    versions: [], // 动态探测
+    versions: ['v1', 'v2', 'v3', 'v4', 'v5'],
     parallax: { x: 0, y: 0, targetX: 0, targetY: 0, friction: 0.08 }
 };
 
@@ -212,42 +210,8 @@ async function loadVersion(v) {
         const c = new Image();
         c.id = 'cloudImg';
         c.className = 'cloud-item';
-        
-        // 探测逻辑：后缀判定 > 私有云 > 信号弹
-        const isSceneSuffix = v.endsWith('-c');
-
-        const tryLocalCloud = () => {
-            c.onload = () => { STATE.hasCloud = true; res(); };
-            c.onerror = () => {
-                if (isSceneSuffix) {
-                    // 如果带 -c 后缀且没私有云，强制加载共享云
-                    STATE.hasCloud = true;
-                    c.onload = res;
-                    c.onerror = res;
-                    c.src = './cloud-12.png';
-                } else {
-                    tryFlagFile();
-                }
-            };
-            c.src = `${path}cloud.png`;
-        };
-
-        const tryFlagFile = () => {
-            const flag = new Image();
-            flag.onload = () => {
-                STATE.hasCloud = true;
-                c.onload = res;
-                c.onerror = res;
-                c.src = './cloud-12.png'; 
-            };
-            flag.onerror = () => {
-                STATE.hasCloud = false;
-                res();
-            };
-            flag.src = `${path}use_cloud.png`;
-        };
-
-        tryLocalCloud();
+        c.onload = res; c.onerror = () => { c.src = './cloud-12.png'; res(); };
+        c.src = `${path}cloud-12.png`;
         layerClouds.appendChild(c);
     }));
 
@@ -276,8 +240,7 @@ function initParallax() {
     };
     const onMove = (e) => {
         if (!isDragging) return;
-        if (e.target.tagName === "INPUT") return;
-        
+        // 健壮的坐标获取逻辑
         let x, y;
         if (e.touches && e.touches.length > 0) {
             x = e.touches[0].clientX;
@@ -287,8 +250,10 @@ function initParallax() {
             y = e.clientY;
         }
 
+        // 提升灵敏度：将系数从 2 提高到 5，让拖拽更省力
         const dx = (x - startX) / window.innerWidth * 5.0;
         const dy = (y - startY) / window.innerHeight * 5.0;
+        // 动态限位：位移极限随阵列尺寸缩放，防止薄阵列穿帮
         const limit = (STATE.arraySize / 12) * 3.0;
         STATE.parallax.targetX = Math.max(-limit, Math.min(limit, baseTargetX + dx));
         STATE.parallax.targetY = Math.max(-limit, Math.min(limit, baseTargetY + dy));
@@ -318,11 +283,10 @@ function updateParallax() {
     if (Math.abs(p.y - p.targetY) < 0.001) p.y = p.targetY;
 
     const nx = p.x, ny = p.y;
-    // 动态力度：根据是否有云膜决定倾斜自由度
-    const currentTilt = STATE.hasCloud ? CONFIG.tiltStrengthStandard : CONFIG.tiltStrengthFree;
+    // 动态力度：偏转强度随阵列尺寸线性缩放
     const depthRatio = STATE.arraySize / 12;
-    const rx = -ny * currentTilt * 2.0 * depthRatio;
-    const ry = nx * currentTilt * 2.0 * depthRatio;
+    const rx = -ny * CONFIG.tiltStrength * 2.0 * depthRatio;
+    const ry = nx * CONFIG.tiltStrength * 2.0 * depthRatio;
     const curZoom = STATE.targetZoom || 1.0;
     const stage = document.getElementById('stage');
 
@@ -339,17 +303,15 @@ function updateParallax() {
 
     const cloudImg = document.getElementById('cloudImg');
     if (cloudImg) {
-        // 核心联动 1：缩放随阵列尺寸变化
         const depthScale = (STATE.arraySize / 8.0); 
-        
-        // 核心联动 2：位移随阵列尺寸和倾斜角度双重变化 (找回 70.4 系数)
-        const x = -nx * 0.032 * 100 * 22 * depthScale;
-        const y = -ny * 0.032 * 100 * 22 * depthScale;
-        cloudImg.style.transform = `translate(-50%,-50%) translate(${x.toFixed(2)}px,${y.toFixed(2)}px) scale(${depthScale * CONFIG.cloudAssetRatio})`;
+        // 恢复平滑位移，移除会导致跳动的取整
+        const x = -nx * 0.032 * 100 * 22;
+        const y = -ny * 0.032 * 100 * 22;
+        cloudImg.style.transform = `translate(-50%,-50%) translate3d(${x.toFixed(2)}px,${y.toFixed(2)}px, 0.1px) scale(${depthScale * CONFIG.cloudAssetRatio})`;
 
-        // 核心联动 3：动态景深（模糊与倾斜强度挂钩，上限由阵列尺寸决定）
-        const intensity = Math.sqrt(nx * nx + ny * ny); // 倾斜强度
-        const limit = (STATE.arraySize / 12) * 3.0;     // 动态阈值
+        // 物理级动态景深
+        const limit = (STATE.arraySize / 12) * 3.0;
+        const intensity = Math.sqrt(nx * nx + ny * ny);
         const threshold = limit * 0.3; 
         
         let blurProgress = 0;
@@ -357,14 +319,15 @@ function updateParallax() {
             blurProgress = (intensity - threshold) / (limit - threshold);
         }
 
-        // 阵列尺寸越大，最大模糊上限越高 (10.8px)
+        // 重新对标模糊度：12mm 下调 10% 后约为 10.8px
         const maxBlur = (STATE.arraySize / 12) * 10.8; 
         const dynamicBlur = blurProgress * maxBlur;
 
+        // 关键修复：当不需要模糊时，彻底移除 filter 属性，防止引擎持续运行导致的颤动
         if (dynamicBlur < 0.1) {
-            cloudImg.style.filter = 'none';
+            layerClouds.style.filter = 'none';
         } else {
-            cloudImg.style.filter = `blur(${dynamicBlur.toFixed(1)}px)`;
+            layerClouds.style.filter = `blur(${dynamicBlur.toFixed(1)}px)`;
         }
     }
 }
@@ -375,9 +338,7 @@ function syncHUD() {
         hudList.innerHTML = '';
         STATE.versions.forEach(v => {
             const b = document.createElement('button');
-            b.className = 'hud-v-btn'; 
-            const displayV = v.replace(/-c$/i, '').toUpperCase();
-            b.textContent = displayV;
+            b.className = 'hud-v-btn'; b.textContent = v.toUpperCase();
             b.classList.toggle('active', v === STATE.version);
             b.onclick = () => loadVersion(v);
             hudList.appendChild(b);
@@ -388,9 +349,7 @@ function syncHUD() {
         sideList.innerHTML = '';
         STATE.versions.forEach(v => {
             const b = document.createElement('button');
-            b.className = 'v-btn'; 
-            const displayV = v.replace(/-c$/i, '').toUpperCase();
-            b.textContent = displayV;
+            b.className = 'v-btn'; b.textContent = v.toUpperCase();
             b.classList.toggle('active', v === STATE.version);
             b.onclick = () => loadVersion(v);
             sideList.appendChild(b);
@@ -443,13 +402,8 @@ function initUI() {
     }
 
     document.getElementById('bg-color-picker').oninput = (e) => updateStageColor(e.target.value);
-    document.getElementById('bg-color-hex').oninput = (e) => {
-        let val = e.target.value.trim();
-        // 自动补全 # 号逻辑
-        if (val.length === 6 && !val.startsWith('#')) val = '#' + val;
-        if (/^#[0-9A-F]{6}$/i.test(val)) {
-            updateStageColor(val);
-        }
+    document.getElementById('bg-color-hex').onchange = (e) => {
+        if (/^#[0-9A-F]{6}$/i.test(e.target.value)) updateStageColor(e.target.value);
     };
 }
 
@@ -470,78 +424,6 @@ function loop(t) {
     requestAnimationFrame(loop);
 }
 
-/**
- * 自动探测版本数量并初始化 UI (并行地毯式搜索)
- */
-async function initVersionSystem() {
-    STATE.versions = [];
-    const maxSearch = 15;
-    
-    const detectTasks = Array.from({ length: maxSearch }, (_, idx) => {
-        const i = idx + 1;
-        const vBase = `v${i}`;
-        const vScene = `v${i}-c`;
-        
-        return new Promise(resolve => {
-            let variants = [vScene, vBase];
-            let resolved = false;
-
-            variants.forEach(vName => {
-                const check = (imgSrc) => {
-                    const img = new Image();
-                    img.onload = () => { if(!resolved){ resolved=true; resolve(vName); } };
-                    img.src = imgSrc;
-                };
-                check(`${vName}/top.png`);
-                check(`${vName}/under.png`);
-            });
-            
-            // 3秒强行断开
-            setTimeout(() => { if(!resolved) resolve(null); }, 3000);
-        });
-    });
-
-    const results = await Promise.all(detectTasks);
-    STATE.versions = results.filter(v => v !== null);
-
-    if (STATE.versions.length === 0) {
-        // 如果啥也没探测到，看看有没有默认的 v1
-        STATE.versions = ['v1'];
-    }
-    
-    STATE.versions.sort((a, b) => {
-        const numA = parseInt(a.replace('v', ''));
-        const numB = parseInt(b.replace('v', ''));
-        return numA - numB;
-    });
-
-    renderVersionUI();
-    
-    // 自动加载逻辑
-    if (STATE.versions.includes(STATE.version)) {
-        loadVersion(STATE.version);
-    } else {
-        loadVersion(STATE.versions[0]);
-    }
-}
-
-/**
- * 动态渲染侧边栏和 HUD 的版本按钮
- */
-function renderVersionUI() {
-    syncHUD(); // 统一调用 syncHUD 进行渲染，避免逻辑碎片化
-}
-
-/**
- * 切换版本封装
- */
-window.switchVersion = function(v) {
-    STATE.version = v;
-    loadVersion(v);
-    renderVersionUI(); 
-};
-
-initGL(); initParallax(); initUI(); 
-initVersionSystem(); // 改为异步探测加载
+initGL(); initParallax(); initUI(); loadVersion(STATE.version);
 requestAnimationFrame(loop);
 window.addEventListener('resize', syncCanvasSize);
