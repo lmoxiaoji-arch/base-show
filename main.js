@@ -1,10 +1,10 @@
 /**
- * TechSun Visual Engine v5.5 - Production Stable
+ * TechSun Visual Engine v5.8 - Production Stable (Release_v5.8)
  */
 
 const CONFIG = {
     tiltStrengthStandard: 8.0, // 有云膜时的标准力度
-    tiltStrengthFree: 18.0,    // 无云膜时的自由力度
+    tiltStrengthFree: 12.0,    // 无云膜时的自由力度（防止翻面）
     parallaxStrength: 0.25,
     zoomMin: 0.8,
     zoomMax: 1.2,
@@ -12,9 +12,11 @@ const CONFIG = {
 };
 
 const STATE = {
-    version: 'v1',
-    hasCloud: true, // 动态标记
+    version: 'v1-c',
+    hasCloud: true,
+    hasLight: true,
     brightness: 1.0,
+    cloudOpacity: 1.0,
     speed: 0.8,
     bgColor: '#000000',
     defaultGreen: false,
@@ -196,8 +198,20 @@ async function loadVersion(v) {
     texLightReady = false; texColorReady = false;
     tasks.push(new Promise(res => {
         const i = new Image();
-        i.onload = () => { updateTexture(texLight, i, 0); texLightReady = true; res(); };
-        i.onerror = () => { clearTexture(texLight, 0); texLightReady = true; res(); };
+        i.onload = () => { 
+            updateTexture(texLight, i, 0); 
+            texLightReady = true; 
+            STATE.hasLight = true;
+            syncHUD();
+            res(); 
+        };
+        i.onerror = () => { 
+            clearTexture(texLight, 0); 
+            texLightReady = true; 
+            STATE.hasLight = false;
+            syncHUD();
+            res(); 
+        };
         i.src = `${path}light.png`;
     }));
     tasks.push(new Promise(res => {
@@ -320,7 +334,20 @@ function updateParallax() {
     const nx = p.x, ny = p.y;
     // 动态力度：根据是否有云膜决定倾斜自由度
     const currentTilt = STATE.hasCloud ? CONFIG.tiltStrengthStandard : CONFIG.tiltStrengthFree;
-    const depthRatio = STATE.arraySize / 12;
+    
+    // 逻辑解耦：只有有云膜时，阵列尺寸才参与计算
+    let depthRatio = 1.0;
+    let zOffset = -30; 
+
+    if (STATE.hasCloud) {
+        depthRatio = STATE.arraySize / 12;
+        zOffset = -(STATE.arraySize / 12) * 50;
+    } else {
+        // FREE 模式：锁定在对标 12mm 的视觉深度
+        depthRatio = 1.0; 
+        zOffset = -50;
+    }
+
     const rx = -ny * currentTilt * 2.0 * depthRatio;
     const ry = nx * currentTilt * 2.0 * depthRatio;
     const curZoom = STATE.targetZoom || 1.0;
@@ -329,9 +356,6 @@ function updateParallax() {
     stage.style.transform = `scale(${curZoom}) rotateX(${rx}deg) rotateY(${ry}deg)`;
     stage.style.setProperty('--after-x', `${-nx * 20}px`);
     stage.style.setProperty('--after-y', `${-ny * 20}px`);
-
-    // 动态计算景深偏移：对标 12mm 为 -50px
-    const zOffset = -(STATE.arraySize / 12) * 50;
     stage.style.setProperty('--depth-z', `${zOffset}px`);
 
     const lightingOverlay = document.querySelector('.lighting-overlay');
@@ -339,6 +363,9 @@ function updateParallax() {
 
     const cloudImg = document.getElementById('cloudImg');
     if (cloudImg) {
+        // 应用云膜透明度
+        cloudImg.style.opacity = STATE.cloudOpacity;
+
         // 核心联动 1：缩放随阵列尺寸变化
         const depthScale = (STATE.arraySize / 8.0); 
         
@@ -370,6 +397,7 @@ function updateParallax() {
 }
 
 function syncHUD() {
+    // 1. 渲染版本按钮
     const hudList = document.getElementById('hud-version-list');
     if (hudList) {
         hudList.innerHTML = '';
@@ -379,9 +407,85 @@ function syncHUD() {
             const displayV = v.replace(/-c$/i, '').toUpperCase();
             b.textContent = displayV;
             b.classList.toggle('active', v === STATE.version);
-            b.onclick = () => loadVersion(v);
+            b.onclick = () => switchVersion(v);
             hudList.appendChild(b);
         });
+    }
+
+    // 2. 动态控制滑块显隐
+    const hudContainer = document.querySelector('.hud-container');
+    const sideDepthSection = document.getElementById('depth-slider')?.closest('.panel-section');
+    const sideCloudOpSection = document.getElementById('cloud-opacity-slider')?.closest('.panel-section');
+    const sideBrightSection = document.getElementById('bright-slider')?.closest('.panel-section');
+    const sideSpeedSection = document.getElementById('speed-slider')?.closest('.panel-section');
+
+    if (hudContainer) {
+        hudContainer.innerHTML = '';
+        
+        // --- 阵列尺寸 (仅有云膜时) ---
+        if (STATE.hasCloud) {
+            if (sideDepthSection) sideDepthSection.style.display = 'block';
+            if (sideCloudOpSection) sideCloudOpSection.style.display = 'block';
+            
+            const depthCard = document.createElement('div');
+            depthCard.className = 'hud-card mini';
+            depthCard.innerHTML = `
+                <div class="hud-label-row"><label>阵列尺寸</label><div class="hud-val" id="hud-depth-val">${STATE.arraySize}mm</div></div>
+                <input type="range" id="hud-depth-slider" min="6" max="12" step="1" value="${STATE.arraySize}">
+            `;
+            hudContainer.appendChild(depthCard);
+            const ds = depthCard.querySelector('#hud-depth-slider');
+            ds.oninput = (e) => {
+                STATE.arraySize = parseInt(e.target.value);
+                document.getElementById('hud-depth-val').textContent = STATE.arraySize + 'mm';
+                document.getElementById('depth-val').textContent = STATE.arraySize + 'mm';
+                document.getElementById('depth-slider').value = STATE.arraySize;
+            };
+        } else {
+            if (sideDepthSection) sideDepthSection.style.display = 'none';
+            if (sideCloudOpSection) sideCloudOpSection.style.display = 'none';
+        }
+
+        // --- 光效控件 (仅有 Light 时) ---
+        if (STATE.hasLight) {
+            if (sideBrightSection) sideBrightSection.style.display = 'block';
+            if (sideSpeedSection) sideSpeedSection.style.display = 'block';
+
+            // 1. 透明度
+            const brightCard = document.createElement('div');
+            brightCard.className = 'hud-card mini';
+            brightCard.innerHTML = `
+                <div class="hud-label-row"><label>光效透明度</label><div class="hud-val" id="hud-bright-val">${STATE.brightness.toFixed(1)}x</div></div>
+                <input type="range" id="hud-bright-slider" min="0.1" max="2.0" step="0.1" value="${STATE.brightness}">
+            `;
+            hudContainer.appendChild(brightCard);
+            const bs = brightCard.querySelector('#hud-bright-slider');
+            bs.oninput = (e) => {
+                STATE.brightness = parseFloat(e.target.value);
+                document.getElementById('hud-bright-val').textContent = STATE.brightness.toFixed(1) + 'x';
+                document.getElementById('bright-val').textContent = STATE.brightness.toFixed(1) + 'x';
+                document.getElementById('bright-slider').value = STATE.brightness;
+            };
+
+            // 2. 速率 (找回被删的速率)
+            const speedCard = document.createElement('div');
+            speedCard.className = 'hud-card mini';
+            speedCard.innerHTML = `
+                <div class="hud-label-row"><label>动画速率</label><div class="hud-val" id="hud-speed-val">${STATE.speed.toFixed(1)}x</div></div>
+                <input type="range" id="hud-speed-slider" min="0.1" max="2.0" step="0.1" value="${STATE.speed}">
+            `;
+            hudContainer.appendChild(speedCard);
+            const ss = speedCard.querySelector('#hud-speed-slider');
+            ss.oninput = (e) => {
+                STATE.speed = parseFloat(e.target.value);
+                document.getElementById('hud-speed-val').textContent = STATE.speed.toFixed(1) + 'x';
+                document.getElementById('speed-val').textContent = STATE.speed.toFixed(1) + 'x';
+                document.getElementById('speed-slider').value = STATE.speed;
+            };
+        } else {
+            if (sideBrightSection) sideBrightSection.style.display = 'none';
+            if (sideSpeedSection) sideSpeedSection.style.display = 'none';
+        }
     }
     const sideList = document.getElementById('version-list');
     if (sideList) {
@@ -420,6 +524,16 @@ function initUI() {
     setup('hud-depth-slider', 'arraySize', 'depth-slider');
     setup('hud-bright-slider', 'brightness', 'bright-slider');
     setup('hud-speed-slider', 'speed', 'speed-slider');
+
+    // 云膜透明度滑块（仅侧边栏）
+    const cloudOpSlider = document.getElementById('cloud-opacity-slider');
+    const cloudOpVal = document.getElementById('cloud-opacity-val');
+    if (cloudOpSlider) {
+        cloudOpSlider.oninput = (e) => {
+            STATE.cloudOpacity = parseFloat(e.target.value);
+            if (cloudOpVal) cloudOpVal.textContent = STATE.cloudOpacity.toFixed(1) + 'x';
+        };
+    }
 
     document.getElementById('btn-preview').onclick = () => document.body.classList.add('is-preview');
     document.getElementById('emergency-exit').onclick = () => document.body.classList.remove('is-preview');
@@ -471,12 +585,16 @@ function loop(t) {
 }
 
 /**
- * 自动探测版本数量并初始化 UI (并行地毯式搜索)
+ * 自动探测版本数量并初始化 UI (优化为非阻塞并行探测)
  */
 async function initVersionSystem() {
     STATE.versions = [];
     const maxSearch = 15;
     
+    // 1. 立即加载默认版本
+    loadVersion(STATE.version);
+
+    // 2. 极速探测逻辑
     const detectTasks = Array.from({ length: maxSearch }, (_, idx) => {
         const i = idx + 1;
         const vBase = `v${i}`;
@@ -486,42 +604,38 @@ async function initVersionSystem() {
             let variants = [vScene, vBase];
             let resolved = false;
 
+            // 必须保留循环！
             variants.forEach(vName => {
                 const check = (imgSrc) => {
                     const img = new Image();
-                    img.onload = () => { if(!resolved){ resolved=true; resolve(vName); } };
+                    img.onload = () => { 
+                        if(!resolved){ 
+                            resolved = true; 
+                            resolve(vName); 
+                            // 发现一个版本，立即同步到全局并渲染
+                            if (!STATE.versions.includes(vName)) {
+                                STATE.versions.push(vName);
+                                STATE.versions.sort((a,b) => parseInt(a.replace('v','')) - parseInt(b.replace('v','')));
+                                renderVersionUI();
+                            }
+                        } 
+                    };
                     img.src = imgSrc;
                 };
                 check(`${vName}/top.png`);
                 check(`${vName}/under.png`);
             });
             
-            // 3秒强行断开
-            setTimeout(() => { if(!resolved) resolve(null); }, 3000);
+            // 本地 300ms 足以探测是否存在
+            setTimeout(() => { if(!resolved) resolve(null); }, 300);
         });
     });
 
-    const results = await Promise.all(detectTasks);
-    STATE.versions = results.filter(v => v !== null);
-
+    // 3. 后台收尾
+    await Promise.all(detectTasks);
     if (STATE.versions.length === 0) {
-        // 如果啥也没探测到，看看有没有默认的 v1
-        STATE.versions = ['v1'];
-    }
-    
-    STATE.versions.sort((a, b) => {
-        const numA = parseInt(a.replace('v', ''));
-        const numB = parseInt(b.replace('v', ''));
-        return numA - numB;
-    });
-
-    renderVersionUI();
-    
-    // 自动加载逻辑
-    if (STATE.versions.includes(STATE.version)) {
-        loadVersion(STATE.version);
-    } else {
-        loadVersion(STATE.versions[0]);
+        STATE.versions = ['v1-c'];
+        renderVersionUI();
     }
 }
 

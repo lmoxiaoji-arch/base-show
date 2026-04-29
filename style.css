@@ -144,6 +144,23 @@ body::after {
     display: flex;
     align-items: center;
     justify-content: center;
+    background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+}
+
+/* 扫描中状态样式 */
+.loading-status {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 10px;
+    color: rgba(255,255,255,0.3);
+    padding: 10px;
+    letter-spacing: 2px;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.3; }
+    50% { opacity: 0.6; }
+    100% { opacity: 0.3; }
 }
 
 .layer-under img, .layer-gl canvas, .layer-top img { max-width: 100%; max-height: 100%; object-fit: contain; }
@@ -258,10 +275,15 @@ input[type=range]::-webkit-slider-thumb {
     z-index: 1000000;
     display: none;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     gap: 12px;
     pointer-events: none;
+    width: 95vw;
+    max-width: 550px; 
+    box-sizing: border-box;
 }
+
+body.is-preview .demo-hud { display: flex; }
 
 .hud-kernel-tag {
     font-size: 8px;
@@ -273,37 +295,74 @@ input[type=range]::-webkit-slider-thumb {
     font-weight: 300;
 }
 
-.hud-container { display: flex; gap: 12px; pointer-events: auto; justify-content: center; }
+.hud-container { 
+    display: flex; 
+    gap: 8px; /* 窄屏间距缩减 */
+    pointer-events: auto; 
+    width: 100%;
+    margin: 0;
+    padding: 0 4px; /* 关键：同步底座的 4px padding，实现边缘绝对重合 */
+    box-sizing: border-box;
+}
+
 .hud-card.mini {
     background: rgba(7, 10, 20, 0.8);
     backdrop-filter: blur(25px);
     border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 10px;
-    padding: 10px 15px;
-    width: 170px;
+    border-radius: 12px;
+    padding: 12px 18px;
+    flex: 1; /* 强制平分空间 */
+    width: 100%; /* 确保在 1 个卡片时填满，多个卡片时平分 */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    box-sizing: border-box;
+    min-width: 120px; /* 保证最小可操作性 */
 }
 
-.hud-label-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 2px; }
-.hud-label-row label { font-size: 10px; color: var(--text-dim); letter-spacing: 1px; }
-.hud-val { font-size: 12px; color: var(--accent-color); font-family: 'Roboto Mono', monospace; font-weight: bold; }
+/* 防止三卡片模式下文字换行 */
+.hud-label-row { 
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between; /* 左右对齐 */
+    gap: 4px; 
+    margin-bottom: 6px; 
+}
+.hud-label-row label { 
+    font-size: 9px; /* 稍微缩小文字 */
+    color: var(--text-dim); 
+    letter-spacing: 0px; 
+    white-space: nowrap; /* 强制不换行 */
+}
+.hud-val { 
+    font-size: 11px; 
+    color: var(--accent-color); 
+    font-family: 'Roboto Mono', monospace; 
+    font-weight: bold; 
+    white-space: nowrap;
+}
 
 .hud-segmented {
     display: flex;
     background: rgba(7, 10, 20, 0.8);
     backdrop-filter: blur(20px);
     border-radius: 100px;
-    padding: 3px;
+    padding: 4px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     pointer-events: auto;
+    width: 100%;
+    box-sizing: border-box;
+    justify-content: center;
 }
 
 .hud-v-btn {
-    padding: 6px 14px;
+    flex: 1;
+    padding: 8px 14px;
     border-radius: 100px;
     border: none;
     background: transparent;
     color: rgba(255, 255, 255, 0.3);
-    font-size: 9px;
+    font-size: 10px;
     letter-spacing: 2px;
     cursor: pointer;
 }
